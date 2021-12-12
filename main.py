@@ -1,3 +1,4 @@
+import argparse
 from collections import defaultdict
 
 import MeCab
@@ -44,4 +45,7 @@ def page_words(url):
 
 
 if __name__ == "__main__":
-    main("投資")
+    parser = argparse.ArgumentParser(description="US Kabu Bot")
+    parser.add_argument("--keyword", help="Set search word.")
+    args = parser.parse_args()
+    main(args.keyword)
