@@ -1,0 +1,71 @@
+name: pull-request
+on:
+  pull_request:
+    paths-ignore:
+      - README.md
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 flake8-docstrings
+      - name: Lint with flake8
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Run test
+        id: run-pytest
+        run: |
+          echo 'TEST_RESULT<<EOF' >> $GITHUB_ENV
+          echo '```' >> $GITHUB_ENV
+          pytest --cov=. > test_result.txt >> $GITHUB_ENV
+          echo '```' >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+      - name: Write test results as PR comment
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const env = process.env
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: env.TEST_RESULT
+            })
+      - name: Generate message
+        run: |
+          echo "Tweet message:
+          \`\`\`
+          $(python main.py --debug)
+          \`\`\`
+          " >> comment.txt
+          cat comment.txt
+      - name: Write tweet message as PR comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          payload=$(cat comment.txt | jq -R --slurp '{body: .}')
+          comment_url=$(cat ${GITHUB_EVENT_PATH} | jq -r .pull_request.comments_url)
+          echo "$payload" | curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data @- "$comment_url" >/dev/null
+
