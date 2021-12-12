@@ -14,8 +14,11 @@ import matplotlib.pyplot as plt
 def main(keyword):
     urls = search(keyword, num_results=30)
     df = pd.DataFrame([page_words(url) for url in urls], index=urls).fillna(0)
+    df.to_csv(f"{keyword}_word_freq.csv")
     tfidf = TfidfTransformer(smooth_idf=False)
     transformed_df = pd.DataFrame(tfidf.fit_transform(df).toarray(), columns=df.columns, index=urls)
+    transformed_df.to_csv(f"{keyword}_word_tf_idf.csv")
+    pd.Series(tfidf.idf_, index=df.columns).rename("idf").sort_values(ascending=False).to_csv(f"{keyword}_idf.csv")
     wc = WordCloud(background_color='white', font_path="~/Library/Fonts/ipaexg.ttf").generate_from_frequencies(
         transformed_df.sum().to_dict())
     fig = plt.figure(figsize=(12, 12))
